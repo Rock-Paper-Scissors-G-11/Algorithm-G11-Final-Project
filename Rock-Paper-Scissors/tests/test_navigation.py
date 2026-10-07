@@ -78,7 +78,14 @@ class GestureNavigatorTests(unittest.TestCase):
             now,
         )
 
-    def test_point_click_confirms_in_three_frames_and_requires_release(self) -> None:
+    def hold_cursor(self, start: float, end: float, gesture: str = "Point"):
+        now = start
+        while now < end:
+            self.update(gesture, (200, 590), self.action_at, now)
+            now = min(now + 0.1, end)
+        return self.update(gesture, (200, 590), self.action_at, end)
+
+    def test_hand_cursor_selects_after_one_second_and_must_leave_to_repeat(self) -> None:
         first = self.update("Point", (200, 590), self.action_at, 0.0)
         self.assertIsNone(first.action)
         self.assertEqual(first.cursor, (200, 590))
@@ -86,39 +93,37 @@ class GestureNavigatorTests(unittest.TestCase):
 
         second = self.update("Point", (200, 590), self.action_at, 0.03)
         self.assertIsNone(second.action)
-        selected = self.update("Point", (200, 590), self.action_at, 0.06)
+        self.hold_cursor(0.13, 0.99)
+        before_dwell = self.update("Point", (200, 590), self.action_at, 0.99)
+        self.assertIsNone(before_dwell.action)
+        selected = self.update("Point", (200, 590), self.action_at, 1.0)
         self.assertEqual(selected.action, "start")
 
-        self.update("Unknown", None, self.action_at, 0.07)
-        self.assertIsNone(
-            self.update("Point", (200, 590), self.action_at, 0.08).action
-        )
-        during_cooldown = self.update("Point", (200, 590), self.action_at, 0.3)
-        self.assertIsNone(during_cooldown.action)
-        self.update("Unknown", None, self.action_at, 0.31)
-        self.update("Unknown", None, self.action_at, 0.43)
-        self.assertIsNone(self.update("Point", (200, 590), self.action_at, 0.44).action)
-        self.assertIsNone(self.update("Point", (200, 590), self.action_at, 0.47).action)
-        selected_again = self.update("Point", (200, 590), self.action_at, 0.5)
+        self.assertIsNone(self.update("Point", (200, 590), self.action_at, 1.3).action)
+        self.update("Point", (1000, 590), self.action_at, 1.31)
+        self.assertEqual(self.navigator.interaction_state, "READY")
+        self.hold_cursor(1.4, 2.39)
+        self.assertIsNone(self.update("Point", (200, 590), self.action_at, 2.39).action)
+        selected_again = self.update("Point", (200, 590), self.action_at, 2.4)
         self.assertEqual(selected_again.action, "start")
 
-        still_held = self.update("Point", (200, 590), self.action_at, 0.53)
+        still_held = self.update("Point", (200, 590), self.action_at, 2.43)
         self.assertIsNone(still_held.action)
-        self.update("Unknown", None, self.action_at, 0.54)
+
+    def test_cursor_dwell_works_without_a_point_pose(self) -> None:
+        self.update("Thumbs Up", (200, 590), self.action_at, 0.0)
         self.assertIsNone(
-            self.update("Point", (200, 590), self.action_at, 0.55).action
+            self.hold_cursor(0.1, 0.99, gesture="Thumbs Up").action
         )
-        self.update("Unknown", None, self.action_at, 0.56)
-        self.update("Unknown", None, self.action_at, 0.68)
-        selected_after_release = self.update(
-            "Point", (200, 590), self.action_at, 0.69
+
+        selected = self.update(
+            "Thumbs Up",
+            (200, 590),
+            self.action_at,
+            1.0,
         )
-        self.assertIsNone(selected_after_release.action)
-        self.assertIsNone(self.update("Point", (200, 590), self.action_at, 0.72).action)
-        selected_after_dwell = self.update(
-            "Point", (200, 590), self.action_at, 0.75
-        )
-        self.assertEqual(selected_after_dwell.action, "start")
+
+        self.assertEqual(selected.action, "start")
 
     def test_point_cursor_uses_light_smoothing(self) -> None:
         self.update("Point", (200, 590), self.action_at, 0.0)
@@ -138,24 +143,24 @@ class GestureNavigatorTests(unittest.TestCase):
         pointing = self.update("Point", target, self.action_at, 0.05)
         self.assertFalse(pointing.hover_changed)
         self.assertIsNone(pointing.action)
-        self.assertIsNone(self.update("Point", target, self.action_at, 0.08).action)
-        self.assertEqual(self.update("Point", target, self.action_at, 0.11).action, "start")
+        now = 0.15
+        while now < 1.04:
+            self.assertIsNone(self.update("Point", target, self.action_at, now).action)
+            now = min(now + 0.1, 1.04)
+        self.assertEqual(self.update("Point", target, self.action_at, 1.05).action, "start")
 
-    def test_moving_across_button_does_not_complete_click_confirmation(self) -> None:
+    def test_cursor_can_move_within_button_during_dwell(self) -> None:
         self.update("Point", (200, 590), self.action_at, 0.0)
-        self.update("Point", (200, 590), self.action_at, 0.03)
-        moving = self.update("Point", (400, 590), self.action_at, 0.06)
+        self.update("Point", (200, 590), self.action_at, 0.1)
+        moving = self.update("Point", (400, 590), self.action_at, 1.0)
 
-        self.assertIsNone(moving.action)
+        self.assertEqual(moving.action, "start")
 
-    def test_click_confirmed_once_only_after_release_and_cooldown(self) -> None:
-        for now in (0.0, 0.03):
-            self.update("Point", (200, 590), self.action_at, now)
-        self.assertEqual(
-            self.update("Point", (200, 590), self.action_at, 0.06).action,
-            "start",
-        )
-        for now in (0.07, 0.2, 0.31, 0.34):
+    def test_click_confirms_once_until_cursor_leaves_button(self) -> None:
+        self.update("Point", (200, 590), self.action_at, 0.0)
+        self.hold_cursor(0.1, 0.99)
+        self.assertEqual(self.update("Point", (200, 590), self.action_at, 1.0).action, "start")
+        for now in (1.07, 1.2, 1.31, 1.34):
             self.assertIsNone(
                 self.update("Point", (200, 590), self.action_at, now).action
             )
@@ -191,23 +196,17 @@ class GestureNavigatorTests(unittest.TestCase):
 
     def test_moving_off_a_button_rearms_selection(self) -> None:
         self.update("Point", (200, 590), self.action_at, 0.0)
-        self.update("Point", (200, 590), self.action_at, 0.03)
-        selected = self.update("Point", (200, 590), self.action_at, 0.06)
+        selected = self.hold_cursor(0.1, 1.0)
         self.assertEqual(selected.action, "start")
 
-        away = self.update("Point", (1000, 590), self.action_at, 0.1)
+        away = self.update("Point", (1000, 590), self.action_at, 1.04)
         self.assertIsNone(away.action)
-        self.update("Point", (1000, 590), self.action_at, 0.22)
-        self.update("Point", (200, 590), self.action_at, 0.25)
-        returned = self.update("Point", (200, 590), self.action_at, 0.28)
+        returned = self.update("Point", (200, 590), self.action_at, 1.3)
         self.assertIsNone(returned.action)
-        self.assertIsNone(self.update("Point", (200, 590), self.action_at, 0.31).action)
-        self.assertEqual(self.navigator.interaction_state, "WAITING")
-        self.update("Unknown", None, self.action_at, 0.32)
-        self.update("Unknown", None, self.action_at, 0.44)
-        self.update("Point", (200, 590), self.action_at, 0.45)
-        self.update("Point", (200, 590), self.action_at, 0.48)
-        selected_again = self.update("Point", (200, 590), self.action_at, 0.56)
+        self.hold_cursor(1.4, 2.29)
+        self.assertIsNone(self.update("Point", (200, 590), self.action_at, 2.29).action)
+        self.assertEqual(self.navigator.interaction_state, "PRESSED")
+        selected_again = self.update("Point", (200, 590), self.action_at, 2.31)
         self.assertEqual(selected_again.action, "start")
 
     def test_fist_requires_stability_before_back(self) -> None:

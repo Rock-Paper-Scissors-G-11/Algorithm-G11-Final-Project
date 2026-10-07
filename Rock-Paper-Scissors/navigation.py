@@ -15,14 +15,13 @@ class NavigationUpdate:
 
 
 class GestureNavigator:
-    RELEASE_SECONDS = 0.12
     BACK_SECONDS = 0.65
     COOLDOWN_SECONDS = 0.25
     CURSOR_TIMEOUT_SECONDS = 0.15
     CURSOR_DEAD_ZONE = 2
     SMOOTHING = 0.9
     CLICK_CONFIRM_FRAMES = 3
-    CLICK_MAX_DRIFT = 24
+    CLICK_DWELL_SECONDS = 1.0
 
     def __init__(self) -> None:
         self._cursor: tuple[int, int] | None = None
@@ -30,12 +29,11 @@ class GestureNavigator:
         self._hover_action: str | None = None
         self._selection_action: str | None = None
         self._selection_frames = 0
-        self._selection_origin: tuple[int, int] | None = None
+        self._selection_started_at: float | None = None
+        self._activated_action: str | None = None
         self._gesture: str | None = None
         self._gesture_started_at = 0.0
         self._cooldown_until = 0.0
-        self._point_released = True
-        self._release_started_at: float | None = None
         self._screen: str | None = None
 
     @property
@@ -48,7 +46,7 @@ class GestureNavigator:
 
     @property
     def interaction_state(self) -> str:
-        if not self._point_released:
+        if self._activated_action is not None:
             return "WAITING"
         if self._selection_action is not None and self._selection_frames:
             return "PRESSED"
@@ -101,41 +99,20 @@ class GestureNavigator:
 
         if not cursor_is_fresh:
             self._cursor = None
-            self._selection_action = None
-            self._selection_frames = 0
-            self._selection_origin = None
 
-        selection_action = (
-            hover_action
-            if gesture == "Point" and hover_action is not None
-            else None
-        )
+        selection_action = hover_action
+        if (
+            self._activated_action is not None
+            and selection_action != self._activated_action
+        ):
+            self._activated_action = None
+
         if selection_action != self._selection_action:
             self._selection_action = selection_action
             self._selection_frames = 1 if selection_action is not None else 0
-            self._selection_origin = (
-                visible_cursor if selection_action is not None else None
-            )
-        elif selection_action is not None and visible_cursor is not None:
-            origin = self._selection_origin or visible_cursor
-            drift_x = visible_cursor[0] - origin[0]
-            drift_y = visible_cursor[1] - origin[1]
-            if drift_x * drift_x + drift_y * drift_y > self.CLICK_MAX_DRIFT**2:
-                self._selection_frames = 1
-                self._selection_origin = visible_cursor
-            else:
-                self._selection_frames += 1
-
-        if gesture != "Point":
-            if self._release_started_at is None:
-                self._release_started_at = now
-            elif (
-                now - self._release_started_at
-                >= self.RELEASE_SECONDS
-            ):
-                self._point_released = True
-        else:
-            self._release_started_at = None
+            self._selection_started_at = now if selection_action is not None else None
+        elif selection_action is not None:
+            self._selection_frames += 1
 
         if now < self._cooldown_until:
             return NavigationUpdate(self._visible_cursor(now), None, hover_changed)
@@ -151,15 +128,15 @@ class GestureNavigator:
 
         if (
             selection_action is not None
-            and gesture == "Point"
-            and self._point_released
+            and self._activated_action is None
             and self._selection_frames >= self.CLICK_CONFIRM_FRAMES
+            and self._selection_started_at is not None
+            and now - self._selection_started_at >= self.CLICK_DWELL_SECONDS
         ):
             self._cooldown_until = now + self.COOLDOWN_SECONDS
-            self._point_released = False
-            self._release_started_at = None
+            self._activated_action = selection_action
             self._selection_frames = 0
-            self._selection_origin = None
+            self._selection_started_at = None
             return NavigationUpdate(
                 self._visible_cursor(now),
                 hover_action,
@@ -198,5 +175,6 @@ class GestureNavigator:
         self._hover_action = None
         self._selection_action = None
         self._selection_frames = 0
-        self._selection_origin = None
+        self._selection_started_at = None
+        self._activated_action = None
         self._clear_gesture_hold()

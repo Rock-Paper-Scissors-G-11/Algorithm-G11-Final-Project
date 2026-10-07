@@ -227,14 +227,16 @@ def main() -> int:
                 if hands_detected == 1
                 else "Unknown"
             )
+            navigation_tip = detected[0][8] if hands_detected == 1 else None
             if game.state in {GameState.COUNTDOWN, GameState.PLAYING}:
-                navigation_gesture = (
-                    "Point" if navigation_gesture == "Point" else "Unknown"
-                )
+                pointing = navigation_gesture == "Point"
+                navigation_gesture = "Point" if pointing else "Unknown"
+                if not pointing:
+                    navigation_tip = None
             nav_update = navigator.update(
                 "game",
                 navigation_gesture,
-                detected[0][8] if hands_detected == 1 else None,
+                navigation_tip,
                 frame_size,
                 ui.action_at,
                 current_time,
@@ -247,7 +249,6 @@ def main() -> int:
             )
             if (
                 nav_update.hover_changed
-                and navigation_gesture == "Point"
                 and not (hovered_action or "").startswith("volume_")
             ):
                 sound.play(SoundEvent.BUTTON_HOVER)
@@ -296,7 +297,6 @@ def main() -> int:
             )
             if (
                 nav_update.hover_changed
-                and navigation_gesture == "Point"
                 and not (hovered_action or "").startswith("volume_")
             ):
                 sound.play(SoundEvent.BUTTON_HOVER)
@@ -365,8 +365,14 @@ def main() -> int:
                     hand_cursor = None
                     previous_hand_detected = False
 
-            if screen == "game" and game.state == GameState.RESULT:
-                game.update("Unknown", 0, time.monotonic())
+            if screen == "game":
+                current_time = time.monotonic()
+                if game.state == GameState.RESULT:
+                    game.update("Unknown", 0, current_time)
+                if game.state == GameState.WAITING:
+                    game.start_round(current_time)
+                elif game.state == GameState.GAME_OVER:
+                    finish_game()
 
             canvas = ui.render(
                 screen,

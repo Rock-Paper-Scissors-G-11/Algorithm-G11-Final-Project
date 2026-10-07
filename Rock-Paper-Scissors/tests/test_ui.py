@@ -65,7 +65,6 @@ class GameUITests(unittest.TestCase):
                 "game",
                 (
                     ((988, 707), "back"),
-                    ((1112, 707), "next_round"),
                     ((1236, 707), "finish"),
                 ),
             ),
@@ -105,6 +104,28 @@ class GameUITests(unittest.TestCase):
                                 0.03,
                             ).action
                         )
+                        for current_time in (
+                            0.13,
+                            0.23,
+                            0.33,
+                            0.43,
+                            0.53,
+                            0.63,
+                            0.73,
+                            0.83,
+                            0.93,
+                            0.99,
+                        ):
+                            self.assertIsNone(
+                                navigator.update(
+                                    screen,
+                                    "Point",
+                                    position,
+                                    (WIDTH, HEIGHT),
+                                    self.ui.action_at,
+                                    current_time,
+                                ).action
+                            )
                         self.assertEqual(
                             navigator.update(
                                 screen,
@@ -112,7 +133,7 @@ class GameUITests(unittest.TestCase):
                                 position,
                                 (WIDTH, HEIGHT),
                                 self.ui.action_at,
-                                0.06,
+                                1.01,
                             ).action,
                             expected_action,
                         )
@@ -150,42 +171,63 @@ class GameUITests(unittest.TestCase):
                                 0.0,
                             ).action
                         )
-                        states = [
+                        self.assertIsNone(
                             navigator.update(
                                 screen,
-                                "Point",
+                                "Thumbs Up",
                                 target,
                                 (WIDTH, HEIGHT),
                                 self.ui.action_at,
-                                current_time,
-                            )
-                            for current_time in (0.03, 0.06, 0.09)
-                        ]
-                        self.assertEqual(states[-1].action, expected_action)
-                        self.assertEqual(navigator.interaction_state, "WAITING")
-
-                        for current_time in (0.1, 0.3, 0.34):
+                                0.03,
+                            ).action
+                        )
+                        for current_time in (
+                            0.13,
+                            0.23,
+                            0.33,
+                            0.43,
+                            0.53,
+                            0.63,
+                            0.73,
+                            0.83,
+                            0.93,
+                            0.99,
+                        ):
                             self.assertIsNone(
                                 navigator.update(
                                     screen,
-                                    "Point",
+                                    "Thumbs Up",
                                     target,
                                     (WIDTH, HEIGHT),
                                     self.ui.action_at,
                                     current_time,
                                 ).action
                             )
-
-                        for current_time in (0.35, 0.47):
+                        self.assertEqual(
                             navigator.update(
                                 screen,
-                                "Unknown",
-                                None,
+                                "Thumbs Up",
+                                target,
                                 (WIDTH, HEIGHT),
                                 self.ui.action_at,
-                                current_time,
+                                1.04,
+                            ).action,
+                            expected_action,
+                        )
+                        self.assertEqual(navigator.interaction_state, "WAITING")
+
+                        for current_time in (1.1, 1.2, 1.3, 1.34):
+                            self.assertIsNone(
+                                navigator.update(
+                                    screen,
+                                    "Thumbs Up",
+                                    target,
+                                    (WIDTH, HEIGHT),
+                                    self.ui.action_at,
+                                    current_time,
+                                ).action
                             )
-                        self.assertEqual(navigator.interaction_state, "READY")
+                        self.assertEqual(navigator.interaction_state, "WAITING")
 
     def test_interaction_debug_draws_button_bounds_and_status(self) -> None:
         canvas = self.ui.render("home", self.game)
