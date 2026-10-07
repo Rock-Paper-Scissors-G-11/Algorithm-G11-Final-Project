@@ -32,6 +32,7 @@ def determine_winner(player_choice: str, computer_choice: str) -> str:
 
 
 class RockPaperScissorsGame:
+    TARGET_SCORE = 3
     COUNTDOWN_SECONDS = 3.0
     RESULT_SECONDS = 2.5
 
@@ -43,14 +44,21 @@ class RockPaperScissorsGame:
         self.player_choice = "--"
         self.computer_choice = "--"
         self.last_result = ""
-        self.status_message = "Press SPACE to start a round."
+        self.status_message = "Rounds start automatically."
         self._countdown_started_at = 0.0
         self._result_started_at = 0.0
 
     def start_round(self, current_time: float) -> None:
-        if self.state != GameState.WAITING:
+        if (
+            self.state != GameState.WAITING
+            or self.player_score >= self.TARGET_SCORE
+            or self.computer_score >= self.TARGET_SCORE
+        ):
             return
 
+        self._begin_round(current_time)
+
+    def _begin_round(self, current_time: float) -> None:
         self.state = GameState.COUNTDOWN
         self._countdown_started_at = current_time
         self.player_choice = "--"
@@ -93,8 +101,18 @@ class RockPaperScissorsGame:
             self.state == GameState.RESULT
             and current_time - self._result_started_at >= self.RESULT_SECONDS
         ):
-            self.state = GameState.WAITING
-            self.status_message = "Press SPACE to play another round."
+            if (
+                self.player_score >= self.TARGET_SCORE
+                or self.computer_score >= self.TARGET_SCORE
+            ):
+                self.state = GameState.GAME_OVER
+                self.status_message = (
+                    "You are the winner!"
+                    if self.player_score >= self.TARGET_SCORE
+                    else "The computer is the winner!"
+                )
+            else:
+                self._begin_round(current_time)
 
     def _finish_round(self, player_choice: str, current_time: float) -> None:
         computer_choice = random.choice(CHOICES)
@@ -112,7 +130,15 @@ class RockPaperScissorsGame:
 
         self.state = GameState.RESULT
         self._result_started_at = current_time
-        self.status_message = "Round complete. The next round needs SPACE."
+        self.status_message = "Round complete. The next round starts automatically."
+
+    @property
+    def match_winner(self) -> str | None:
+        if self.player_score >= self.TARGET_SCORE:
+            return "Player"
+        if self.computer_score >= self.TARGET_SCORE:
+            return "Computer"
+        return None
 
     def reset_score(self) -> None:
         self.player_score = 0
@@ -122,7 +148,7 @@ class RockPaperScissorsGame:
         self.player_choice = "--"
         self.computer_choice = "--"
         self.last_result = ""
-        self.status_message = "Score reset. Press SPACE to start a round."
+        self.status_message = "Score reset. Rounds start automatically."
 
     def quit(self) -> None:
         self.state = GameState.GAME_OVER

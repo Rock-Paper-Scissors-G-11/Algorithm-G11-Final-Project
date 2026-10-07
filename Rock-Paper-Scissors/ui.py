@@ -815,7 +815,14 @@ class GameUI:
 
         side = (923, 177, 1306, 748)
         _panel(canvas, side, CARD, 23)
-        _text(canvas, "Scoreboard", (954, 217), 0.48, MUTED, 2)
+        _text(
+            canvas,
+            f"First to {game.TARGET_SCORE} wins",
+            (954, 217),
+            0.48,
+            MUTED,
+            2,
+        )
         _text(canvas, "You", (963, 255), 0.45, ACCENT, 2)
         _text(canvas, "Computer", (1158, 255), 0.45, COMPUTER, 2)
         _rounded_rect(canvas, (953, 270, 1104, 333), CARD_LIGHT, 15)
@@ -891,15 +898,6 @@ class GameUI:
         else:
             _text(canvas, game.status_message[:37], (955, 611), 0.41, MUTED, 1)
 
-        if game.state == GameState.RESULT:
-            button_text = "Round in progress"
-            button_enabled = False
-        elif game.last_result:
-            button_text = "Next round"
-            button_enabled = True
-        else:
-            button_text = "Start round"
-            button_enabled = True
         main_menu_box, next_round_box, end_game_box = (
             self._game_action_button_boxes(side)
         )
@@ -915,10 +913,11 @@ class GameUI:
         self._button(
             canvas,
             next_round_box,
-            button_text,
+            "Match over"
+            if game.match_winner is not None
+            else "Auto next",
             "next_round",
-            primary=True,
-            enabled=button_enabled and game.state == GameState.WAITING,
+            enabled=False,
             label_size=0.5,
             label_thickness=2,
         )
@@ -931,7 +930,7 @@ class GameUI:
             label_size=0.5,
             label_thickness=2,
         )
-        _text(canvas, "SPACE  Start round", (77, 786), 0.45, MUTED, 1)
+        _text(canvas, "Rounds start automatically", (77, 786), 0.45, MUTED, 1)
         _text(canvas, "R  Reset score", (278, 786), 0.45, MUTED, 1)
         _text(canvas, "Q  End game", (443, 786), 0.45, MUTED, 1)
 
@@ -1012,9 +1011,9 @@ class GameUI:
         _rounded_rect(canvas, (636, 190, 724, 278), (76, 61, 43), 24)
         _center_text(canvas, "RPS", (680, 234), 0.8, ACCENT, 2)
         if game.player_score > game.computer_score:
-            headline, headline_color = "YOU WON THE GAME!", SUCCESS
+            headline, headline_color = "YOU ARE THE WINNER!", SUCCESS
         elif game.player_score < game.computer_score:
-            headline, headline_color = "YOU LOSE", DANGER
+            headline, headline_color = "COMPUTER IS THE WINNER!", DANGER
         else:
             headline, headline_color = "FINAL DRAW", WARNING
         _center_text(canvas, headline, (680, 329), 0.95, headline_color, 2)
@@ -1054,6 +1053,14 @@ class GameUI:
         _text(canvas, f"Wins     {game.player_score}", (448, 627), 0.54, SUCCESS, 1)
         _text(canvas, f"Losses     {game.computer_score}", (688, 627), 0.54, DANGER, 1)
         _text(canvas, f"Draws     {game.draw_score}", (448, 663), 0.54, MUTED, 1)
+        _center_text(
+            canvas,
+            "Hover over a button for 1 second to continue",
+            (684, 686),
+            0.38,
+            MUTED,
+            1,
+        )
         self._button(canvas, (420, 704, 660, 760), "Play again", "play_again", True)
         self._button(canvas, (684, 704, 924, 760), "Main menu", "home")
         self._button(canvas, (948, 704, 1052, 760), "Exit", "exit")

@@ -17,8 +17,9 @@ initializes the webcam at launch so hand gestures can navigate the welcome scree
   computer accents, and large menu controls.
 - Explicit player/computer labels on the scoreboard and final-score summary.
 - Camera-backed menu pointer with immediate button highlighting and selection
-  after a 0.4-second Point dwell; release Point or move off the button before
-  selecting again. A fist goes back. Mouse and keyboard remain available.
+  after hovering over a button for one second; no click gesture is required.
+  Moving away cancels the hold, and leaving the selected button rearms it. A
+  fist goes back. Mouse and keyboard remain available.
 - Enlarged button hit areas remain separated from neighboring controls, and
   the game camera panel provides a taller, more comfortable hand-play view.
 - Lightweight landmark smoothing reduces tracking jitter while preserving
@@ -33,7 +34,10 @@ initializes the webcam at launch so hand gestures can navigate the welcome scree
 - Rejects frames with no hand or more than one hand.
 - Three-second 3-2-1-SHOOT countdown; the camera keeps sampling throughout so
   a stable hand pose at SHOOT is captured immediately.
-- Score tracking, reset control, and an unlimited number of rounds.
+- First-to-three-wins matches, with the first round and every later round
+  starting automatically; after the winner is shown, use the same one-second
+  hand-hover selection to play again, return home, or exit.
+- Score tracking and a reset control.
 - Separate modules for webcam detection, gesture recognition, navigation,
   sound, game rules, and UI.
 - Unit tests for gesture classification, game rules, round scoring, and UI rendering.
@@ -140,25 +144,27 @@ The app requests camera access at launch so hand navigation works on the Home
 screen. The live hand status is shown in the header. Select **Settings** to
 toggle sound effects and adjust master volume for the current session.
 
-Point with one index finger at a button. It highlights as soon as the pointer
-reaches it; hold steady for about 0.4 seconds to select, then release the Point
-gesture before selecting again. Hold a fist steadily to go back (or end a game
-to its summary). Gesture navigation is active in menus, the round-waiting/result
-states, and the final summary; it is disabled while a Rock/Paper/Scissors
-choice is being detected. Mouse and the keyboard remain usable as backups.
+Move the hand cursor over a button and keep it there for one second to select
+it, just like clicking; no special click pose is needed. Moving away cancels
+the hold, and leaving the selected button rearms it. Hold a fist steadily to
+go back (or end a game to its summary). Hand navigation is active in menus,
+the round-waiting/result states, and the final summary; it is disabled while a
+Rock/Paper/Scissors choice is being detected. Mouse and keyboard remain
+available as backups.
 
 ## How to play
 
-1. Allow camera access when the game opens. On Home, point at **START GAME**
-   and hold steady briefly to select, or use the mouse/ENTER.
-2. Press **SPACE** or select **START ROUND** to begin a round.
-3. Show your pose during the **3, 2, 1** countdown and hold it through
-   **SHOOT!** for immediate capture.
-4. Keep one clear Rock, Paper, or Scissors pose visible to the camera.
-5. The game records the first recognized pose, chooses for the computer, and
+1. Allow camera access when the game opens. On Home, move the hand cursor over
+   **START GAME** and keep it there for one second, or use the mouse/ENTER.
+2. The first round starts automatically. Show your pose during the **3, 2, 1**
+   countdown and hold it through **SHOOT!** for immediate capture.
+3. Keep one clear Rock, Paper, or Scissors pose visible to the camera.
+4. The game records the first recognized pose, chooses for the computer, and
    shows the winner and updated score.
-6. After the result pause, press **SPACE** or select **NEXT ROUND** to continue.
-7. Select **END GAME** or press **Q** to see the final score and round statistics.
+5. After each result pause, the next round starts automatically. The first
+   player to win three rounds wins the match.
+6. On the winner screen, hover over **PLAY AGAIN**, **MAIN MENU**, or **EXIT**
+   for one second to choose what to do next.
 
 Hold your palm toward the camera and keep it upright for the most reliable
 finger checks. Only one hand should be visible.
@@ -169,12 +175,12 @@ finger checks. Only one hand should be visible.
 - **H** — Open the tutorial from the home screen or return to the main menu
   from the final summary.
 - **Settings** — Turn sound effects on/off and set master volume for this session.
-- **Hand** — Point at a button to highlight it immediately; a stable point
-  selects after three frames. Release Point or move away before selecting again.
-  A steady fist returns to the previous menu.
-- **SPACE** — Start a round when the game is waiting; also starts a game from
-  the home screen and plays again from the final summary.
-- **R** — Reset the scores and return to the waiting state.
+- **Hand** — Move the hand cursor over a button to highlight it immediately;
+  keep it there for one second to select. Moving away cancels the hold, and
+  leaving the selected button rearms it. A steady fist returns to the previous menu.
+- **SPACE** — Start a game from the home screen or play again from the final
+  summary. Rounds start automatically during a match.
+- **R** — Reset the match score; the next round starts automatically.
 - **Q** — End the current game and show its summary; quit from the home screen
   or final summary.
 - **ESC** — Return to the previous screen, end the current game, or return to
@@ -205,7 +211,7 @@ Manual checklist:
 - [ ] Home opens after camera initialization and shows hand status
 - [ ] The cursor appears at the index fingertip on first detection; brief hand loss
   preserves the cursor and longer loss reconnects at the new fingertip position
-- [ ] Pointing highlights a button; a short stable point selects once
+- [ ] Hovering the hand cursor highlights a button; a one-second dwell selects once without a click pose
 - [ ] A stable fist goes back once and respects the cooldown
 - [ ] Home EXIT closes the app
 - [ ] Mouse and keyboard remain usable as backups
@@ -226,7 +232,9 @@ Manual checklist:
 - [ ] Scores update after a round
 - [ ] Countdown and live gesture/no-hand feedback are clear
 - [ ] Result names both choices and the winner
-- [ ] Next round can be started after the result pause
+- [ ] First round and later rounds start automatically without selecting a button
+- [ ] Match ends when either side gets three wins; draws do not count as wins
+- [ ] Winner screen offers Play Again, Main Menu, and Exit through one-second hand dwell
 - [ ] Ending a game displays final score, wins, losses, and draws
 - [ ] Play Again resets the score and returns to gameplay without restarting the camera
 - [ ] R resets the score

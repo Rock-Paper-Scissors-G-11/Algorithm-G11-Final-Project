@@ -213,7 +213,83 @@ class RoundTests(unittest.TestCase):
         self.assertEqual(game.player_score, 1)
         self.assertEqual(game.player_choice, "Rock")
         game.update("Paper", 1, 16.0)
-        self.assertEqual(game.state, GameState.WAITING)
+        self.assertEqual(game.state, GameState.COUNTDOWN)
+        self.assertEqual(game.countdown_number(16.0), 3)
+
+    def test_match_ends_after_three_player_wins_and_not_before(self) -> None:
+        game = RockPaperScissorsGame()
+        with patch("game.random.choice", return_value="Scissors"):
+            for round_number in range(3):
+                round_start = round_number * 10.0
+                game.start_round(round_start)
+                game.update("Unknown", 0, round_start + game.COUNTDOWN_SECONDS)
+                game.update("Rock", 1, round_start + game.COUNTDOWN_SECONDS + 0.1)
+
+                if round_number < 2:
+                    self.assertEqual(game.match_winner, None)
+                    game.update(
+                        "Unknown",
+                        0,
+                        round_start
+                        + game.COUNTDOWN_SECONDS
+                        + 0.1
+                        + game.RESULT_SECONDS
+                        + 0.02,
+                    )
+                    self.assertEqual(game.state, GameState.COUNTDOWN)
+                else:
+                    self.assertEqual(game.match_winner, "Player")
+                    game.update(
+                        "Unknown",
+                        0,
+                        round_start
+                        + game.COUNTDOWN_SECONDS
+                        + 0.1
+                        + game.RESULT_SECONDS
+                        + 0.02,
+                    )
+                    self.assertEqual(game.state, GameState.GAME_OVER)
+                    self.assertEqual(game.status_message, "You are the winner!")
+
+        self.assertEqual(game.player_score, 3)
+        game.start_round(100.0)
+        self.assertEqual(game.state, GameState.GAME_OVER)
+
+    def test_draw_does_not_count_toward_three_wins(self) -> None:
+        game = RockPaperScissorsGame()
+        with patch("game.random.choice", return_value="Rock"):
+            game.start_round(0.0)
+            game.update("Unknown", 0, 3.0)
+            game.update("Rock", 1, 3.1)
+            game.update("Unknown", 0, 3.1 + game.RESULT_SECONDS + 0.02)
+
+        self.assertEqual(game.draw_score, 1)
+        self.assertEqual(game.player_score, 0)
+        self.assertEqual(game.computer_score, 0)
+        self.assertEqual(game.state, GameState.COUNTDOWN)
+
+    def test_match_ends_after_three_computer_wins(self) -> None:
+        game = RockPaperScissorsGame()
+        with patch("game.random.choice", return_value="Paper"):
+            for round_number in range(3):
+                round_start = round_number * 10.0
+                game.start_round(round_start)
+                game.update("Unknown", 0, round_start + game.COUNTDOWN_SECONDS)
+                game.update("Rock", 1, round_start + game.COUNTDOWN_SECONDS + 0.1)
+                game.update(
+                    "Unknown",
+                    0,
+                    round_start
+                    + game.COUNTDOWN_SECONDS
+                    + 0.1
+                    + game.RESULT_SECONDS
+                    + 0.02,
+                )
+
+        self.assertEqual(game.computer_score, 3)
+        self.assertEqual(game.match_winner, "Computer")
+        self.assertEqual(game.state, GameState.GAME_OVER)
+        self.assertEqual(game.status_message, "The computer is the winner!")
 
     def test_reset_clears_score_and_returns_to_waiting(self) -> None:
         game = RockPaperScissorsGame()
